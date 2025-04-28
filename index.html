@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scuderia Bandeiras</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 min-h-screen text-white">
+
+  <header class="text-center py-10">
+    <h1 class="text-4xl font-bold text-red-500">Scuderia <span class="text-white">Bandeiras</span></h1>
+    <p class="text-gray-300 mt-2">EXPERIENCE</p>
+  </header>
+
+  <main class="flex flex-wrap justify-center gap-8 px-4">
+
+    <!-- Add Participant Card -->
+    <div class="bg-slate-800 p-6 rounded-2xl shadow-lg w-80">
+      <h2 class="text-2xl font-semibold mb-6">Novo participante</h2>
+      <input id="firstName" type="text" placeholder="Nome" class="w-full mb-4 p-3 rounded-xl bg-slate-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+      <input id="lastName" type="text" placeholder="Sobrenome" class="w-full mb-6 p-3 rounded-xl bg-slate-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+      <button onclick="addParticipant()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition">Adicionar</button>
+    </div>
+
+    <!-- Add Lap Time Card -->
+    <div class="bg-slate-800 p-6 rounded-2xl shadow-lg w-80">
+      <h2 class="text-2xl font-semibold mb-6">Adicione tempo de volta</h2>
+      <select id="participantSelect" class="w-full mb-4 p-3 rounded-xl bg-slate-700 text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500">
+        <option value="">Selecione um participante</option>
+      </select>
+      <input id="lapTime" type="text" placeholder="Lap Time (e.g., 01:32:346)" class="w-full mb-6 p-3 rounded-xl bg-slate-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+      <button onclick="addLapTime()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition">Adicionar tempo de volta</button>
+    </div>
+
+  </main>
+
+  <!-- Ranking Table -->
+  <section class="mt-10 px-4 flex justify-center">
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-lg w-full max-w-5xl overflow-x-auto">
+      <h2 class="text-2xl font-semibold mb-6">Ranking</h2>
+      <table class="w-full table-auto">
+        <thead class="bg-slate-700 text-gray-300">
+          <tr>
+            <th class="p-3">Posição</th>
+            <th class="p-3">Nome</th>
+            <th class="p-3">Melhor volta</th>
+            <th class="p-3">Voltas</th>
+            <th class="p-3">Opção</th>
+          </tr>
+        </thead>
+        <tbody id="rankingTable" class="text-center">
+          <tr>
+            <td colspan="5" class="p-6 text-gray-400">Sem participantes, adicione novos para começar.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    let participants = [];
+
+    function addParticipant() {
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+
+      if (!firstName || !lastName) {
+        alert('Please enter both first and last names.');
+        return;
+      }
+
+      const id = Date.now();
+      participants.push({ id, firstName, lastName, laps: [], bestLap: null });
+
+      updateParticipantSelect();
+      updateTable();
+
+      document.getElementById('firstName').value = '';
+      document.getElementById('lastName').value = '';
+    }
+
+    function updateParticipantSelect() {
+      const select = document.getElementById('participantSelect');
+      select.innerHTML = '<option value="">Select a participant</option>';
+      participants.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.firstName} ${p.lastName}`;
+        select.appendChild(option);
+      });
+    }
+
+    function addLapTime() {
+      const participantId = document.getElementById('participantSelect').value;
+      const lapTime = document.getElementById('lapTime').value.trim();
+
+      if (!participantId || !lapTime) {
+        alert('Please select a participant and enter a lap time.');
+        return;
+      }
+
+      const participant = participants.find(p => p.id == participantId);
+      if (participant) {
+        participant.laps.push(lapTime);
+        if (!participant.bestLap || compareLapTimes(lapTime, participant.bestLap) < 0) {
+          participant.bestLap = lapTime;
+        }
+        updateTable();
+        document.getElementById('lapTime').value = '';
+      }
+    }
+
+    function compareLapTimes(a, b) {
+      const parse = (t) => {
+        const [min, sec, ms] = t.split(':').map(Number);
+        return (min * 60 * 1000) + (sec * 1000) + ms;
+      }
+      return parse(a) - parse(b);
+    }
+
+    function updateTable() {
+      participants.sort((a, b) => {
+        if (!a.bestLap) return 1;
+        if (!b.bestLap) return -1;
+        return compareLapTimes(a.bestLap, b.bestLap);
+      });
+
+      const tbody = document.getElementById('rankingTable');
+      tbody.innerHTML = '';
+
+      if (participants.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-gray-400">No participants yet. Add someone to get started.</td></tr>';
+        return;
+      }
+
+      participants.forEach((p, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="p-4">${index + 1}</td>
+          <td class="p-4">${p.firstName} ${p.lastName}</td>
+          <td class="p-4">${p.bestLap || '-'}</td>
+          <td class="p-4">${p.laps.length}</td>
+          <td class="p-4">
+            <button onclick="removeParticipant(${p.id})" class="bg-red-600 hover:bg-red-700 py-1 px-4 rounded-xl text-white transition">Apagar</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function removeParticipant(id) {
+      participants = participants.filter(p => p.id !== id);
+      updateParticipantSelect();
+      updateTable();
+    }
+  </script>
+
+</body>
+</html>
